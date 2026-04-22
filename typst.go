@@ -9,7 +9,6 @@ package typst
 #cgo windows,amd64 LDFLAGS: -L ./lib/x86_64-pc-windows-msvc/
 
 #include <stdlib.h>
-#include <string.h>
 #include "typst.h"
 
 */
@@ -22,8 +21,8 @@ import (
 type TypstWorld struct{ w *C.TypstWorld }
 type TypstDocument struct{ d *C.TypstDocument }
 
-// NewTypstWorld Generates a new Typst World
-// NOTICE: must be maunally freed using `.Free()`
+// generates a new TypstWorld Object
+// Must be manually freed using `.Free()`
 func NewTypstWorld(path string, source string) TypstWorld {
 	path_c := C.CString(path)
 	defer C.free(unsafe.Pointer(path_c))
@@ -36,41 +35,45 @@ func NewTypstWorld(path string, source string) TypstWorld {
 	return TypstWorld{_world}
 }
 
-func (w *TypstWorld) Free() {
-	C.typst_world_free(w.w)
+// Frees a TypstWorld Object
+func (world *TypstWorld) Free() {
+	C.typst_world_free(world.w)
 }
 
-func (w *TypstWorld) Compile() (TypstDocument, error) {
-	var e C.TypstError
-	d := C.typst_world_compile(w.w, &e)
-	err_msg := C.GoString((e.message))
+// Compiles a TypstWorld Object
+// Must be manually freed using `.Free()`
+func (world *TypstWorld) Compile() (TypstDocument, error) {
+	var err C.TypstError
+	doc := C.typst_world_compile(world.w, &err)
+	err_msg := C.GoString((err.message))
 
 	if err_msg == "" {
 
-		return TypstDocument{d}, nil
+		return TypstDocument{doc}, nil
 	}
-	return TypstDocument{d}, fmt.Errorf("Typst Error: %v", err_msg)
+	return TypstDocument{doc}, fmt.Errorf("Typst Error: %v", err_msg)
 
 }
 
-func (d *TypstDocument) Free() {
-	C.typst_document_free(d.d)
+// Frees a TypstDocument Object
+func (doc *TypstDocument) Free() {
+	C.typst_document_free(doc.d)
 }
-func (d *TypstDocument) ToPdf() ([]byte, error) {
+func (doc *TypstDocument) ToPdf() ([]byte, error) {
 
 	var data *C.uint8_t
-	var leng C.uintptr_t
+	var length C.uintptr_t
 
-	var e C.TypstError
-	C.typst_document_to_pdf(d.d, &leng, &data, &e)
-	defer C.typst_pdf_free(data, leng)
-	b := C.GoBytes(unsafe.Pointer(data), C.int(leng))
+	var err C.TypstError
+	C.typst_document_to_pdf(doc.d, &length, &data, &err)
+	defer C.typst_pdf_free(data, length)
+	bytes := C.GoBytes(unsafe.Pointer(data), C.int(length))
 
-	err_msg := C.GoString((e.message))
+	err_msg := C.GoString((err.message))
 
 	if err_msg == "" {
-		return b, nil
+		return bytes, nil
 	}
 
-	return b, fmt.Errorf("Typst Error: %v", err_msg)
+	return bytes, fmt.Errorf("Typst Error: %v", err_msg)
 }
