@@ -18,8 +18,8 @@ import (
 	"unsafe"
 )
 
-type TypstWorld struct{ w *C.TypstWorld }
-type TypstDocument struct{ d *C.TypstDocument }
+type TypstWorld struct{ world *C.TypstWorld }
+type TypstDocument struct{ doc *C.TypstDocument }
 
 // generates a new TypstWorld Object
 // Must be manually freed using `.Free()`
@@ -37,14 +37,14 @@ func NewTypstWorld(path string, source string) TypstWorld {
 
 // Frees a TypstWorld Object
 func (world *TypstWorld) Free() {
-	C.typst_world_free(world.w)
+	C.typst_world_free(world.world)
 }
 
 // Compiles a TypstWorld Object
 // Must be manually freed using `.Free()`
 func (world *TypstWorld) Compile() (TypstDocument, error) {
 	var err C.TypstError
-	doc := C.typst_world_compile(world.w, &err)
+	doc := C.typst_world_compile(world.world, &err)
 	err_msg := C.GoString((err.message))
 
 	if err_msg == "" {
@@ -57,7 +57,7 @@ func (world *TypstWorld) Compile() (TypstDocument, error) {
 
 // Frees a TypstDocument Object
 func (doc *TypstDocument) Free() {
-	C.typst_document_free(doc.d)
+	C.typst_document_free(doc.doc)
 }
 func (doc *TypstDocument) ToPdf() ([]byte, error) {
 
@@ -65,7 +65,7 @@ func (doc *TypstDocument) ToPdf() ([]byte, error) {
 	var length C.uintptr_t
 
 	var err C.TypstError
-	C.typst_document_to_pdf(doc.d, &length, &data, &err)
+	C.typst_document_to_pdf(doc.doc, &length, &data, &err)
 	defer C.typst_pdf_free(data, length)
 	bytes := C.GoBytes(unsafe.Pointer(data), C.int(length))
 
